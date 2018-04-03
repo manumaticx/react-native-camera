@@ -70,6 +70,7 @@ public class RNCameraView extends CameraView implements LifecycleEventListener, 
   private boolean mShouldDetectFaces = false;
   private boolean mShouldScanBarCodes = false;
   private boolean mShouldRecognizeText = false;
+  private boolean mShouldDetectInvertedBarCodes = true;
   private int mFaceDetectorMode = RNFaceDetector.FAST_MODE;
   private int mFaceDetectionLandmarks = RNFaceDetector.NO_LANDMARKS;
   private int mFaceDetectionClassifications = RNFaceDetector.NO_CLASSIFICATIONS;
@@ -126,6 +127,14 @@ public class RNCameraView extends CameraView implements LifecycleEventListener, 
         return rotated;
       }
 
+      private byte[] invertImage(byte[] imageData) {
+        byte[] inverted = new byte[imageData.length];
+        for (int i = 0; i < imageData.length; ++i) {
+          inverted[i] = (byte) (imageData[i] ^ 0xff);
+        }
+        return inverted;
+      }
+
       @Override
       public void onFramePreview(CameraView cameraView, byte[] data, int width, int height, int rotation) {
         int correctRotation = RNCameraViewHelper.getCorrectCameraRotation(rotation, getFacing());
@@ -141,6 +150,10 @@ public class RNCameraView extends CameraView implements LifecycleEventListener, 
           barCodeScannerTaskLock = true;
           BarCodeScannerAsyncTaskDelegate delegate = (BarCodeScannerAsyncTaskDelegate) cameraView;
           new BarCodeScannerAsyncTask(delegate, mMultiFormatReader, correctData, correctWidth, correctHeight).execute();
+          if (mShouldDetectInvertedBarCodes) {
+            byte[] invertedData = invertImage(correctData);
+            new BarCodeScannerAsyncTask(delegate, mMultiFormatReader, invertedData, correctWidth, correctHeight).execute();
+          }
         }
 
         if (mShouldDetectFaces && !faceDetectorTaskLock && cameraView instanceof FaceDetectorAsyncTaskDelegate) {
